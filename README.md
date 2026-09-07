@@ -62,14 +62,21 @@ Only active employees appear in the public visitor dropdown.
 
 ## 5. Deploy to Vercel
 
-Push this folder to GitHub.
+Push this folder to GitHub. The repository includes `vercel.json` and uses Node.js 20 or newer.
 
 In Vercel:
 - Import the GitHub repository
-- Add the same environment variables from `.env.local`
+- Add these Environment Variables for **Production, Preview, and Development**:
+	- `NEXT_PUBLIC_SUPABASE_URL`
+	- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+	- `SUPABASE_SERVICE_ROLE_KEY`
+	- `ADMIN_PASSWORD`
+	- `SESSION_SECRET`
 - Deploy
 
 After deployment, every GitHub push can trigger a new Vercel deployment when automatic deployments are enabled.
+
+Do not upload `.env.local` to GitHub. Add the values in Vercel Project Settings → Environment Variables instead. After changing environment variables, redeploy the project.
 
 ## Important production improvements
 
@@ -89,3 +96,5 @@ This MVP intentionally keeps the design simple. Before using it as a full securi
 Configure Gmail from **Admin → Email settings**. Use a Gmail App Password, not the normal Gmail password. The App Password is encrypted before it is stored, and visitor notifications are sent to the selected employee with `IT@bhorukapark.com` in CC. Every employee who can be selected as a host must have an email address in the Employees section.
 
 The settings require the `email_settings` table from `supabase/schema.sql` to be applied to Supabase.
+
+After deployment, open `https://your-project.vercel.app/admin`, add employees with their email addresses, then use **Email settings** to configure the Gmail App Password. The Gmail account must have 2-Step Verification enabled, and the sender address must be the Gmail account used in the setup.
