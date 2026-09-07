@@ -35,8 +35,7 @@ Get:
 
 Copy `.env.example` to `.env.local` and fill in:
 
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 ADMIN_PASSWORD=
 SESSION_SECRET=
@@ -67,8 +66,7 @@ Push this folder to GitHub. The repository includes `vercel.json` and uses Node.
 In Vercel:
 - Import the GitHub repository
 - Add these Environment Variables for **Production, Preview, and Development**:
-	- `NEXT_PUBLIC_SUPABASE_URL`
-	- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+	- `SUPABASE_URL`
 	- `SUPABASE_SERVICE_ROLE_KEY`
 	- `ADMIN_PASSWORD`
 	- `SESSION_SECRET`

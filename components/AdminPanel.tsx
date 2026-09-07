@@ -14,6 +14,7 @@ export default function AdminPanel(){
   const [tab,setTab]=useState<"visitors"|"employees"|"email">("visitors");
   const [form,setForm]=useState({name:"",department:"",email:""});
   const [loading,setLoading]=useState(false);
+  const [employeeError,setEmployeeError]=useState("");
   const [emailSettings,setEmailSettings]=useState({email:"",appPassword:"",recipient:"",configured:false,ccEmail:"IT@bhorukapark.com",updatedAt:null as string|null});
   const [emailMessage,setEmailMessage]=useState("");
   const [emailError,setEmailError]=useState("");
@@ -21,11 +22,16 @@ export default function AdminPanel(){
   async function loadVisitors(){
     setLoading(true); const r=await fetch(`/api/reports?from=${from}&to=${to}`); const d=await r.json(); setVisitors(d.visitors||[]); setLoading(false);
   }
-  async function loadEmployees(){ const r=await fetch("/api/admin/employees"); const d=await r.json(); setEmployees(d.employees||[]); }
+  async function loadEmployees(){
+    const r=await fetch("/api/admin/employees");
+    const d=await r.json();
+    if (!r.ok) { setEmployeeError(d.error || "Unable to load employees."); return; }
+    setEmployeeError(""); setEmployees(d.employees||[]);
+  }
   useEffect(()=>{loadVisitors();loadEmployees()},[]);
 
   async function checkout(id:string){await fetch(`/api/visitors/${id}/checkout`,{method:"PATCH"});loadVisitors();}
-  async function addEmployee(e:React.FormEvent){e.preventDefault();await fetch("/api/admin/employees",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(form)});setForm({name:"",department:"",email:""});loadEmployees();}
+  async function addEmployee(e:React.FormEvent){e.preventDefault();setEmployeeError("");const response=await fetch("/api/admin/employees",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(form)});const data=await response.json();if(!response.ok){setEmployeeError(data.error||"Unable to add employee.");return;}setForm({name:"",department:"",email:""});loadEmployees();}
   async function toggleEmployee(x:Employee){await fetch("/api/admin/employees",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({...x,active:!x.active})});loadEmployees();}
   async function loadEmailSettings(){const response=await fetch("/api/admin/email-settings");const data=await response.json();if(response.ok)setEmailSettings(current=>({...current,email:data.email||"",configured:Boolean(data.configured),ccEmail:data.ccEmail||"IT@bhorukapark.com",updatedAt:data.updatedAt||null}));}
   async function saveEmailSettings(event:React.FormEvent){event.preventDefault();setEmailError("");setEmailMessage("");const response=await fetch("/api/admin/email-settings",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(emailSettings)});const data=await response.json();if(!response.ok)return setEmailError(data.error||"Unable to save email settings.");setEmailSettings(current=>({...current,appPassword:"",configured:true,ccEmail:data.ccEmail,updatedAt:data.updatedAt}));setEmailMessage("Gmail settings saved securely.");}
@@ -110,7 +116,7 @@ export default function AdminPanel(){
         </div>
       </div> : tab==="employees" ?
       <div className="grid grid2">
-        <div className="card employee-form-card"><p className="eyebrow">Team directory</p><h2>Add employee</h2><p className="muted">Add a host so visitors can find them during check-in.</p><form onSubmit={addEmployee} className="grid">
+        <div className="card employee-form-card">{employeeError && <div className="error" role="alert">{employeeError}</div>}<p className="eyebrow">Team directory</p><h2>Add employee</h2><p className="muted">Add a host so visitors can find them during check-in.</p><form onSubmit={addEmployee} className="grid">
           <div><label>Name *</label><input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div>
           <div><label>Department</label><input value={form.department} onChange={e=>setForm({...form,department:e.target.value})}/></div>
           <div><label>Email</label><input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div>
