@@ -18,7 +18,7 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const email = String(body.email || "").trim();
     const appPassword = String(body.appPassword || "").replaceAll(" ", "").trim();
-    if (!email || !email.includes("@gmail.com")) return NextResponse.json({ error: "Enter a valid Gmail address." }, { status: 400 });
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) return NextResponse.json({ error: "Enter a valid Gmail or Google Workspace email address." }, { status: 400 });
     if (appPassword.length < 12) return NextResponse.json({ error: "Enter the 16-character Gmail App Password." }, { status: 400 });
     const settings = await saveGmailSettings(email, appPassword);
     return NextResponse.json({ ok: true, configured: true, email: settings.email, ccEmail: settings.cc_email, updatedAt: settings.updated_at });
