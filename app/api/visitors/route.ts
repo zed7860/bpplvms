@@ -17,7 +17,8 @@ export async function POST(req: NextRequest) {
     for (const k of required) if (!body[k]) return NextResponse.json({error:`${k} is required.`},{status:400});
     const { data: host, error: hostError } = await supabaseAdmin.from("employees").select("id,name,email,active").eq("id", body.meeting_with_id).eq("active", true).single();
     if (hostError || !host) return NextResponse.json({error:"The selected host is no longer available."},{status:400});
-    if (!host.email) return NextResponse.json({error:"This host does not have an email address configured. Please ask reception for assistance."},{status:400});
+    const hostEmail = String(host.email || "").trim();
+    if (!hostEmail || !/^\S+@\S+\.\S+$/.test(hostEmail)) return NextResponse.json({error:`${host.name} does not have a valid email address configured. Update this employee in Admin → Employees.`},{status:400});
     let photo_url = null;
     if (body.photo) {
       const base64 = String(body.photo).split(",")[1];
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
     }).select("id").single();
     if (error) return NextResponse.json({error:error.message},{status:500});
     try {
-        await notifyHost({ visitorId:data.id, name:body.name, email:body.email || null, phone:body.phone, company:body.company || null, visitorType:body.visitor_type || "Other", purpose:body.purpose || null, hostName:host.name, hostEmail:host.email, photoUrl:photo_url, checkIn });
+        await notifyHost({ visitorId:data.id, name:body.name, email:body.email || null, phone:body.phone, company:body.company || null, visitorType:body.visitor_type || "Other", purpose:body.purpose || null, hostName:host.name, hostEmail, photoUrl:photo_url, checkIn });
     } catch (notificationError) {
       return NextResponse.json({error:notificationError instanceof Error ? notificationError.message : "Host notification failed."},{status:502});
     }

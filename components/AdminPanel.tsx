@@ -123,7 +123,7 @@ export default function AdminPanel(){
           <button className="btn primary">Add Employee</button>
         </form></div>
         <div className="card employee-list-card"><div className="space"><div><p className="eyebrow">Directory</p><h2>Employee list</h2></div><span className="count-pill">{employees.length} total</span></div>{employees.map(x=><div key={x.id} className="employee-row">
-          <div><b>{x.name}</b><br/><span className="muted">{x.department||""} {x.email?`• ${x.email}`:""}</span></div>
+          <div><b>{x.name}</b><br/><span className="muted">{x.department||""} {x.email?`• ${x.email}`:""}</span>{!x.email&&<small className="missing-email">Email required for visitor notifications</small>}</div>
           <button className="btn secondary small" onClick={()=>toggleEmployee(x)}>{x.active?"Disable":"Enable"}</button>
         </div>)}</div>
       </div> :
