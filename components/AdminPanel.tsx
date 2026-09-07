@@ -18,6 +18,7 @@ export default function AdminPanel(){
   const [emailSettings,setEmailSettings]=useState({email:"",appPassword:"",recipient:"",configured:false,ccEmail:"IT@bhorukapark.com",updatedAt:null as string|null});
   const [emailMessage,setEmailMessage]=useState("");
   const [emailError,setEmailError]=useState("");
+  const [employeeEmailDrafts,setEmployeeEmailDrafts]=useState<Record<string,string>>({});
 
   async function loadVisitors(){
     setLoading(true); const r=await fetch(`/api/reports?from=${from}&to=${to}`); const d=await r.json(); setVisitors(d.visitors||[]); setLoading(false);
@@ -26,13 +27,21 @@ export default function AdminPanel(){
     const r=await fetch("/api/admin/employees");
     const d=await r.json();
     if (!r.ok) { setEmployeeError(d.error || "Unable to load employees."); return; }
-    setEmployeeError(""); setEmployees(d.employees||[]);
+    setEmployeeError(""); setEmployees(d.employees||[]); setEmployeeEmailDrafts(Object.fromEntries((d.employees||[]).map((employee:Employee)=>[employee.id,employee.email||""])));
   }
   useEffect(()=>{loadVisitors();loadEmployees()},[]);
 
   async function checkout(id:string){await fetch(`/api/visitors/${id}/checkout`,{method:"PATCH"});loadVisitors();}
   async function addEmployee(e:React.FormEvent){e.preventDefault();setEmployeeError("");const response=await fetch("/api/admin/employees",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(form)});const data=await response.json();if(!response.ok){setEmployeeError(data.error||"Unable to add employee.");return;}setForm({name:"",department:"",email:""});loadEmployees();}
   async function toggleEmployee(x:Employee){await fetch("/api/admin/employees",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({...x,active:!x.active})});loadEmployees();}
+  async function saveEmployeeEmail(employee:Employee){
+    const email=(employeeEmailDrafts[employee.id]||"").trim();
+    if (!/^\S+@\S+\.\S+$/.test(email)) { setEmployeeError(`Enter a valid email address for ${employee.name}.`); return; }
+    const response=await fetch("/api/admin/employees",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({...employee,email})});
+    const data=await response.json();
+    if(!response.ok){setEmployeeError(data.error||"Unable to save employee email.");return;}
+    setEmployeeError(""); setEmployees(current=>current.map(item=>item.id===employee.id?{...item,email}:item));
+  }
   async function loadEmailSettings(){const response=await fetch("/api/admin/email-settings");const data=await response.json();if(response.ok)setEmailSettings(current=>({...current,email:data.email||"",configured:Boolean(data.configured),ccEmail:data.ccEmail||"IT@bhorukapark.com",updatedAt:data.updatedAt||null}));}
   async function saveEmailSettings(event:React.FormEvent){event.preventDefault();setEmailError("");setEmailMessage("");const response=await fetch("/api/admin/email-settings",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(emailSettings)});const data=await response.json();if(!response.ok)return setEmailError(data.error||"Unable to save email settings.");setEmailSettings(current=>({...current,appPassword:"",configured:true,ccEmail:data.ccEmail,updatedAt:data.updatedAt}));setEmailMessage("Gmail settings saved securely.");}
   async function sendTestEmail(){setEmailError("");setEmailMessage("");const response=await fetch("/api/admin/email-settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({recipient:emailSettings.recipient||emailSettings.email})});const data=await response.json();if(!response.ok)return setEmailError(data.error||"Unable to send test email.");setEmailMessage(`Test email sent to ${data.recipient} with IT@bhorukapark.com in CC.`);}
@@ -123,7 +132,7 @@ export default function AdminPanel(){
           <button className="btn primary">Add Employee</button>
         </form></div>
         <div className="card employee-list-card"><div className="space"><div><p className="eyebrow">Directory</p><h2>Employee list</h2></div><span className="count-pill">{employees.length} total</span></div>{employees.map(x=><div key={x.id} className="employee-row">
-          <div><b>{x.name}</b><br/><span className="muted">{x.department||""} {x.email?`• ${x.email}`:""}</span>{!x.email&&<small className="missing-email">Email required for visitor notifications</small>}</div>
+          <div className="employee-info"><b>{x.name}</b><span className="muted">{x.department||""}</span><div className="employee-email-editor"><input aria-label={`Email for ${x.name}`} type="email" placeholder="employee@bhorukapark.com" value={employeeEmailDrafts[x.id]||""} onChange={event=>setEmployeeEmailDrafts({...employeeEmailDrafts,[x.id]:event.target.value})}/><button className="btn secondary small" onClick={()=>saveEmployeeEmail(x)}>Save email</button></div>{!x.email&&<small className="missing-email">Email required for visitor notifications</small>}</div>
           <button className="btn secondary small" onClick={()=>toggleEmployee(x)}>{x.active?"Disable":"Enable"}</button>
         </div>)}</div>
       </div> :

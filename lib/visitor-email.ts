@@ -41,5 +41,7 @@ export async function notifyHost(input: VisitorEmailInput) {
   const html = `<div style="font-family:Arial,sans-serif;color:#17324a"><h2>New visitor arrival</h2><p>${escapeHtml(input.name)} has arrived to meet you at Bhoruka Park.</p><table>${rows}</table>${photo}<p style="margin-top:24px;color:#66777b;font-size:12px">This notification was sent by the Bhoruka Park visitor management system.</p></div>`;
   const text = `New visitor arrival\n\n${input.name} has arrived to meet you at Bhoruka Park.\n\nVisitor: ${input.name}\nEmail: ${input.email || "Not provided"}\nPhone: ${input.phone}\nCompany: ${input.company || "Not provided"}\nVisitor type: ${input.visitorType}\nPurpose: ${input.purpose || "Not provided"}\nChecked in: ${new Date(input.checkIn).toLocaleString()}\nVisitor ID: ${input.visitorId}\nPhoto: ${input.photoUrl || "Not available"}`;
 
-  await transporter.sendMail({ from: settings.email, to: input.hostEmail, cc: settings.cc_email || CC_EMAIL, subject: `Visitor arrived: ${input.name}`, html, text });
+  const hostEmail = input.hostEmail.trim().toLowerCase();
+  const ccEmail = (settings.cc_email || CC_EMAIL).trim().toLowerCase();
+  await transporter.sendMail({ from: settings.email, to: [hostEmail], cc: hostEmail === ccEmail ? undefined : [ccEmail], subject: `Visitor arrived: ${input.name}`, html, text });
 }

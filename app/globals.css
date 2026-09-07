@@ -84,6 +84,11 @@ th { color:#596579; font-size:12px; text-transform:uppercase; }
 .employee-form-card .eyebrow, .employee-list-card .eyebrow { margin-bottom:8px; }
 .employee-row { display:flex; align-items:center; justify-content:space-between; gap:15px; padding:14px 0; border-bottom:1px solid #e5ece6; }
 .employee-row:last-child { border-bottom:0; }
+.employee-info { flex:1; min-width:0; }
+.employee-info > b, .employee-info > .muted { display:block; }
+.employee-email-editor { display:flex; gap:8px; max-width:520px; margin-top:9px; }
+.employee-email-editor input { min-width:0; padding:9px 10px; font-size:12px; }
+.employee-email-editor .btn { flex:0 0 auto; }
 .missing-email { display:block; margin-top:5px; color:#b42318; font-size:11px; font-weight:700; }
 .email-settings-card { max-width:920px; }
 .email-settings-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; margin-bottom:28px; }
@@ -171,6 +176,7 @@ th { color:#596579; font-size:12px; text-transform:uppercase; }
   .report-filters > div { min-width:0; }
   .report-filters .btn { grid-column:1 / -1; }
   .employee-row { align-items:flex-start; }
+  .employee-email-editor { display:grid; grid-template-columns:1fr auto; }
   .email-settings-heading, .test-email-box { display:block; }
   .config-pill { display:inline-block; margin-top:16px; }
   .test-email-controls { min-width:0; margin-top:16px; }
