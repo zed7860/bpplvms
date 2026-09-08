@@ -90,7 +90,7 @@ export default function AdminPanel(){
   async function logout(){await fetch("/api/admin/logout",{method:"POST"});location.href="/admin/login";}
 
   return <>
-    <header className="header admin-header"><div className="header-inner"><div className="brand admin-brand"><span className="brand-mark">B</span><span>Bhoruka Park <small>VISITOR ADMIN</small></span></div><div className="admin-actions"><a href="/">Public page</a><button className="btn secondary small" onClick={logout}>Log out</button></div></div></header>
+    <header className="header admin-header"><div className="header-inner"><div className="brand admin-brand"><img className="brand-mark-logo" src="/images/bppl-logo.png" alt="Bhoruka Park logo" /><span>Bhoruka Park <small>VISITOR ADMIN</small></span></div><div className="admin-actions"><a href="/">Public page</a><button className="btn secondary small" onClick={logout}>Log out</button></div></div></header>
     <main className="container admin-container">
       <div className="admin-intro"><div><p className="eyebrow">Operations dashboard</p><h1>Visitor overview</h1><p>Keep today&apos;s arrivals moving and your reception team informed.</p></div><div className="live-pill"><span /> Live workspace</div></div>
       <div className="admin-tabs" role="tablist" aria-label="Admin sections">

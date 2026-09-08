@@ -2,10 +2,11 @@ import VisitorForm from "@/components/VisitorForm";
 
 export default function Home() {
   return (
-    <div className="site-shell">
-      <main className="container">
+    <div className="site-shell home-shell">
+      <main className="home-grid">
         <section className="hero" aria-labelledby="page-title">
           <div className="hero-copy">
+            <img className="hero-logo" src="/images/bppl-logo.png" alt="Bhoruka Park logo" />
             <p className="eyebrow">Visitor check-in</p>
             <h1 id="page-title">Welcome to Bhoruka Park</h1>
             <p>Register your visit in a few simple steps. Your host will be notified when you arrive.</p>

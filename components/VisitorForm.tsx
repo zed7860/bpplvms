@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 type Employee = { id: string; name: string; department: string | null };
 type SubmittedVisitor = { name: string; phone: string; email: string; company: string; visitor_type: string; purpose: string; meeting_with_name: string; photo: string; check_in: string; id?: string };
-const steps = ["Welcome", "Contact", "Visit", "Host", "Photo"];
+const steps = ["Mobile", "About you", "Visit", "Host", "Photo"];
 
 function ThankYouScreen({ visitor }: { visitor: SubmittedVisitor }) {
   const details = [["Full name", visitor.name], ["Mobile number", visitor.phone], ["Email address", visitor.email || "Not provided"], ["Company / organisation", visitor.company || "Not provided"], ["Visitor type", visitor.visitor_type], ["Purpose / remarks", visitor.purpose || "Not provided"], ["Meeting with", visitor.meeting_with_name]];
@@ -31,6 +31,8 @@ export default function VisitorForm() {
   const [submittedVisitor, setSubmittedVisitor] = useState<SubmittedVisitor | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingPhone, setCheckingPhone] = useState(false);
+  const [returningVisitor, setReturningVisitor] = useState(false);
   const [values, setValues] = useState({ name: "", phone: "", email: "", company: "", visitor_type: "Meeting", purpose: "" });
 
   useEffect(() => {
@@ -48,6 +50,25 @@ export default function VisitorForm() {
   }, [employeeQuery, employees, selectedEmployee]);
 
   const update = (field: keyof typeof values, value: string) => setValues(current => ({ ...current, [field]: value }));
+
+  async function checkExistingVisitor(phone: string) {
+    setCheckingPhone(true);
+    try {
+      const response = await fetch(`/api/visitors?phone=${encodeURIComponent(phone)}`);
+      const data = await response.json();
+      if (response.ok && data.visitor) {
+        setValues(current => ({ ...current, name: data.visitor.name || current.name, email: data.visitor.email || current.email, company: data.visitor.company || current.company }));
+        if (data.visitor.photo_url) setPhoto(data.visitor.photo_url);
+        setReturningVisitor(true);
+      } else {
+        setReturningVisitor(false);
+      }
+    } catch {
+      setReturningVisitor(false);
+    } finally {
+      setCheckingPhone(false);
+    }
+  }
 
   function resizePhoto(file: File) {
     const image = new Image();
@@ -68,17 +89,19 @@ export default function VisitorForm() {
   }
 
   function validate() {
-    if (step === 0 && !values.name.trim()) return "Please enter your full name.";
-    if (step === 1 && !values.phone.trim()) return "Please enter your mobile number.";
+    if (step === 0 && !values.phone.trim()) return "Please enter your mobile number.";
+    if (step === 1 && !values.name.trim()) return "Please enter your full name.";
     if (step === 3 && !selectedEmployee) return "Please select the employee you are meeting.";
     if (step === 4 && !photo) return "Please add your photo to continue.";
     return "";
   }
 
-  function next() {
+  async function next() {
     const problem = validate();
     if (problem) return setError(problem);
-    setError(""); setStep(current => Math.min(current + 1, steps.length - 1));
+    setError("");
+    if (step === 0) await checkExistingVisitor(values.phone.trim());
+    setStep(current => Math.min(current + 1, steps.length - 1));
   }
 
   async function submit() {
@@ -92,7 +115,7 @@ export default function VisitorForm() {
       if (!response.ok) throw new Error(data.error || "Registration failed.");
       setSubmittedVisitor({ ...submitted, check_in: new Date().toISOString(), id: data.id });
       setValues({ name: "", phone: "", email: "", company: "", visitor_type: "Meeting", purpose: "" });
-      setSelectedEmployee(null); setEmployeeQuery(""); setPhoto(""); setPhotoInputKey(key => key + 1); setStep(0);
+      setSelectedEmployee(null); setEmployeeQuery(""); setPhoto(""); setPhotoInputKey(key => key + 1); setStep(0); setReturningVisitor(false);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Registration failed.");
     } finally { setLoading(false); }
@@ -104,8 +127,8 @@ export default function VisitorForm() {
     <div className="stepper" aria-label={`Step ${step + 1} of ${steps.length}`} aria-live="polite">{steps.map((label, index) => <div className={`stepper-item ${index === step ? "active" : ""} ${index < step ? "complete" : ""}`} key={label} aria-current={index === step ? "step" : undefined}><span>{index < step ? "✓" : index + 1}</span><small>{label}</small></div>)}</div>
     {error && <div className="error" role="alert">{error}</div>}
     <div className="question-card">
-      {step === 0 && <><p className="eyebrow">Step 1 of 5</p><h2>Welcome! What is your name?</h2><p className="question-help">We’ll use this to register your visit.</p><label htmlFor="visitor-name">Full name</label><input id="visitor-name" value={values.name} onChange={event => update("name", event.target.value)} onKeyDown={event => event.key === "Enter" && next()} placeholder="Enter your full name" autoFocus /></>}
-      {step === 1 && <><p className="eyebrow">Step 2 of 5</p><h2>How can we reach you?</h2><p className="question-help">Your details are used only for your visit.</p><div className="field-stack"><div><label htmlFor="visitor-phone">Mobile number</label><input id="visitor-phone" type="tel" value={values.phone} onChange={event => update("phone", event.target.value)} placeholder="Enter your mobile number" autoFocus /></div><div><label htmlFor="visitor-email">Email address <span className="optional">Optional</span></label><input id="visitor-email" type="email" value={values.email} onChange={event => update("email", event.target.value)} placeholder="name@example.com" /></div><div><label htmlFor="visitor-company">Company / organisation <span className="optional">Optional</span></label><input id="visitor-company" value={values.company} onChange={event => update("company", event.target.value)} placeholder="Company name" /></div></div></>}
+      {step === 0 && <><p className="eyebrow">Step 1 of 5</p><h2>Let’s start with your mobile number</h2><p className="question-help">We’ll check if we already have your details on file.</p><label htmlFor="visitor-phone">Mobile number</label><input id="visitor-phone" type="tel" value={values.phone} onChange={event => { update("phone", event.target.value); setReturningVisitor(false); }} onKeyDown={event => event.key === "Enter" && next()} placeholder="Enter your mobile number" autoFocus />{checkingPhone && <p className="search-hint">Checking your details…</p>}</>}
+      {step === 1 && <><p className="eyebrow">Step 2 of 5</p><h2>{returningVisitor ? `Welcome back, ${values.name.split(" ")[0] || "there"}!` : "What is your name?"}</h2><p className="question-help">{returningVisitor ? "We found your previous details. Please confirm or update them." : "We’ll use this to register your visit."}</p><div className="field-stack"><div><label htmlFor="visitor-name">Full name</label><input id="visitor-name" value={values.name} onChange={event => update("name", event.target.value)} onKeyDown={event => event.key === "Enter" && next()} placeholder="Enter your full name" autoFocus /></div><div><label htmlFor="visitor-email">Email address <span className="optional">Optional</span></label><input id="visitor-email" type="email" value={values.email} onChange={event => update("email", event.target.value)} placeholder="name@example.com" /></div><div><label htmlFor="visitor-company">Company / organisation <span className="optional">Optional</span></label><input id="visitor-company" value={values.company} onChange={event => update("company", event.target.value)} placeholder="Company name" /></div></div></>}
       {step === 2 && <><p className="eyebrow">Step 3 of 5</p><h2>Tell us about your visit</h2><p className="question-help">A few details help us welcome you better.</p><div className="field-stack"><div><label htmlFor="visitor-type">Visitor type</label><select id="visitor-type" value={values.visitor_type} onChange={event => update("visitor_type", event.target.value)}><option>Meeting</option><option>Interview</option><option>Vendor</option><option>Delivery</option><option>Other</option></select></div><div><label htmlFor="visitor-purpose">Purpose / remarks <span className="optional">Optional</span></label><textarea id="visitor-purpose" value={values.purpose} onChange={event => update("purpose", event.target.value)} placeholder="What brings you here today?" /></div></div></>}
       {step === 3 && <><p className="eyebrow">Step 4 of 5</p><h2>Who are you meeting?</h2><p className="question-help">Start typing at least three letters of their name.</p><label htmlFor="employee-search">Employee name</label><div className="employee-search"><input id="employee-search" value={employeeQuery} onChange={event => { setEmployeeQuery(event.target.value); setSelectedEmployee(null); }} onKeyDown={event => event.key === "Enter" && next()} placeholder="For example: Raj" autoComplete="off" autoFocus />{employeeQuery.trim().length > 0 && employeeQuery.trim().length < 3 && <p className="search-hint">Type {3 - employeeQuery.trim().length} more letter{employeeQuery.trim().length === 2 ? "" : "s"} to see matches.</p>}{matches.length > 0 && <ul className="employee-results" role="listbox">{matches.map(employee => <li key={employee.id}><button type="button" role="option" onClick={() => { setSelectedEmployee(employee); setEmployeeQuery(employee.name); }}>{employee.name}<small>{employee.department || "Bhoruka Park"}</small></button></li>)}</ul>}</div>{selectedEmployee && <div className="selected-host" role="status">✓ Meeting with <strong>{selectedEmployee.name}</strong>{selectedEmployee.department ? ` · ${selectedEmployee.department}` : ""}</div>}{employeeQuery.trim().length >= 3 && !selectedEmployee && matches.length === 0 && <p className="search-hint">No matching employee found. Please ask reception for help.</p>}</>}
       {step === 4 && <><p className="eyebrow">Step 5 of 5</p><h2>One last thing — your photo</h2><p className="question-help">This helps our reception team identify your visit.</p><label className="photo-picker" htmlFor="visitor-photo"><span className="photo-icon">◉</span><span>{photo ? "Photo ready — choose another" : "Take or upload your photo"}</span><small>JPG, PNG or camera photo</small><input key={photoInputKey} id="visitor-photo" type="file" accept="image/*" capture="user" onChange={event => event.target.files?.[0] && resizePhoto(event.target.files[0])} /></label>{photo && <img className="visitor-preview" src={photo} alt="Your registration preview" />}</>}

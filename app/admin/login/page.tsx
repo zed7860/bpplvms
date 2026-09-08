@@ -11,6 +11,7 @@ export default function Login() {
   }
   return <main className="container" style={{maxWidth:480,marginTop:70}}>
     <div className="card">
+      <img className="login-logo" src="/images/bppl-logo.png" alt="Bhoruka Park logo" />
       <h2>Bhoruka Park Admin</h2><p className="muted">Sign in to manage visitors and employees.</p>
       {error && <div className="error">{error}</div>}
       <form onSubmit={submit} className="grid">
