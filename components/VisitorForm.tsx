@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { formatISTDate, formatISTTime12, formatISTTime24 } from "@/lib/datetime";
 
 type Employee = { id: string; name: string; department: string | null };
 type SubmittedVisitor = { name: string; phone: string; email: string; company: string; visitor_type: string; purpose: string; meeting_with_name: string; photo: string; check_in: string; id?: string };
@@ -14,7 +15,7 @@ function ThankYouScreen({ visitor }: { visitor: SubmittedVisitor }) {
       <div className="thank-you-heading"><p className="eyebrow">Registration complete</p><h1 id="thank-you-title">Thank you, {visitor.name}.</h1><p>Your visit has been checked in. Please take a seat while your host is notified.</p></div>
       <div className="thank-you-content">
         <div className="thank-you-photo">{visitor.photo ? <img src={visitor.photo} alt={`Photo of ${visitor.name}`} /> : <span aria-hidden="true">{visitor.name.charAt(0).toUpperCase()}</span>}</div>
-        <dl className="thank-you-details">{details.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}<div><dt>Checked in</dt><dd>{new Date(visitor.check_in).toLocaleString()}</dd></div></dl>
+        <dl className="thank-you-details">{details.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}<div><dt>Checked in (IST)</dt><dd>{formatISTDate(visitor.check_in)}, {formatISTTime12(visitor.check_in)} &middot; {formatISTTime24(visitor.check_in)} (24-hr)</dd></div></dl>
       </div>
       <button type="button" className="btn primary thank-you-close" onClick={() => window.location.assign("/")}>Close and return home <span>→</span></button>
     </section>

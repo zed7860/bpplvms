@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatISTDate, formatISTTime12, formatISTTime24 } from "@/lib/datetime";
 
 const ACCENTS = [
   { id: "rose", color: "#e77c5b" },
@@ -9,8 +10,6 @@ const ACCENTS = [
   { id: "emerald", color: "#10b981" },
   { id: "amber", color: "#f5a623" },
 ];
-
-function pad(n: number) { return String(n).padStart(2, "0"); }
 
 export default function SiteControls() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -43,15 +42,17 @@ export default function SiteControls() {
     localStorage.setItem("bvm-accent", id);
   }
 
-  const dateLabel = now ? `${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now.getFullYear()}` : "";
-  const timeLabel = now ? `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}` : "";
+  const dateLabel = now ? formatISTDate(now) : "";
+  const time12Label = now ? formatISTTime12(now) : "";
+  const time24Label = now ? formatISTTime24(now) : "";
 
   return (
     <div className={`site-controls ${open ? "open" : ""}`}>
       {open && (
         <div className="site-controls-panel" role="group" aria-label="Display settings">
           <div className="site-controls-clock" aria-live="off">
-            <span className="site-controls-time">{timeLabel}</span>
+            <span className="site-controls-time">{time24Label}</span>
+            <span className="site-controls-time-12">{time12Label} IST</span>
             <span className="site-controls-date">{dateLabel}</span>
           </div>
           <button type="button" className="site-controls-row" onClick={toggleTheme} aria-pressed={theme === "dark"}>
