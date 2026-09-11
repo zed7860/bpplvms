@@ -3,7 +3,6 @@ import nodemailer from "nodemailer";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 const SETTINGS_ID = 1;
-const CC_EMAIL = "IT@bhorukapark.com";
 const algorithm = "aes-256-gcm";
 
 function encryptionKey() {
@@ -30,8 +29,12 @@ export async function getGmailSettings() {
   return data;
 }
 
-export async function saveGmailSettings(email: string, appPassword: string) {
-  const { data, error } = await getSupabaseAdmin().from("email_settings").upsert({ id: SETTINGS_ID, provider: "gmail", email, app_password_encrypted: encryptSecret(appPassword), cc_email: CC_EMAIL, updated_at: new Date().toISOString() }).select("id,provider,email,cc_email,updated_at").single();
+export function parseCcEmails(value: string | null | undefined) {
+  return String(value || "").split(/[,;\n]+/).map(email => email.trim()).filter(Boolean);
+}
+
+export async function saveGmailSettings(email: string, appPassword: string, ccEmail: string) {
+  const { data, error } = await getSupabaseAdmin().from("email_settings").upsert({ id: SETTINGS_ID, provider: "gmail", email, app_password_encrypted: encryptSecret(appPassword), cc_email: ccEmail, updated_at: new Date().toISOString() }).select("id,provider,email,cc_email,updated_at").single();
   if (error) throw new Error(error.message);
   return data;
 }
@@ -42,4 +45,3 @@ export async function createGmailTransport() {
   return { settings, transporter: nodemailer.createTransport({ service: "gmail", auth: { user: settings.email, pass: decryptSecret(settings.app_password_encrypted) } }) };
 }
 
-export { CC_EMAIL };

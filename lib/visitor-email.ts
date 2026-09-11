@@ -1,4 +1,4 @@
-import { createGmailTransport, CC_EMAIL } from "@/lib/gmail";
+import { createGmailTransport, parseCcEmails } from "@/lib/gmail";
 
 type VisitorEmailInput = {
   visitorId: string;
@@ -42,6 +42,6 @@ export async function notifyHost(input: VisitorEmailInput) {
   const text = `New visitor arrival\n\n${input.name} has arrived to meet you at Bhoruka Park.\n\nVisitor: ${input.name}\nEmail: ${input.email || "Not provided"}\nPhone: ${input.phone}\nCompany: ${input.company || "Not provided"}\nVisitor type: ${input.visitorType}\nPurpose: ${input.purpose || "Not provided"}\nChecked in: ${new Date(input.checkIn).toLocaleString()}\nVisitor ID: ${input.visitorId}\nPhoto: ${input.photoUrl || "Not available"}`;
 
   const hostEmail = input.hostEmail.trim().toLowerCase();
-  const ccEmail = (settings.cc_email || CC_EMAIL).trim().toLowerCase();
-  await transporter.sendMail({ from: settings.email, to: [hostEmail], cc: hostEmail === ccEmail ? undefined : [ccEmail], subject: `Visitor arrived: ${input.name}`, html, text });
+  const ccEmails = parseCcEmails(settings.cc_email).map(email => email.toLowerCase()).filter(email => email !== hostEmail);
+  await transporter.sendMail({ from: settings.email, to: [hostEmail], cc: ccEmails.length ? ccEmails : undefined, subject: `Visitor arrived: ${input.name}`, html, text });
 }

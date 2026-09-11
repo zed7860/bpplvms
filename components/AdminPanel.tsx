@@ -16,7 +16,7 @@ export default function AdminPanel(){
   const [form,setForm]=useState({name:"",department:"",email:""});
   const [loading,setLoading]=useState(false);
   const [employeeError,setEmployeeError]=useState("");
-  const [emailSettings,setEmailSettings]=useState({email:"",appPassword:"",recipient:"",configured:false,ccEmail:"IT@bhorukapark.com",updatedAt:null as string|null});
+  const [emailSettings,setEmailSettings]=useState({email:"",appPassword:"",recipient:"",configured:false,ccEmail:"",updatedAt:null as string|null});
   const [emailMessage,setEmailMessage]=useState("");
   const [emailError,setEmailError]=useState("");
   const [employeeEmailDrafts,setEmployeeEmailDrafts]=useState<Record<string,string>>({});
@@ -43,9 +43,9 @@ export default function AdminPanel(){
     if(!response.ok){setEmployeeError(data.error||"Unable to save employee email.");return;}
     setEmployeeError(""); setEmployees(current=>current.map(item=>item.id===employee.id?{...item,email}:item));
   }
-  async function loadEmailSettings(){const response=await fetch("/api/admin/email-settings");const data=await response.json();if(response.ok)setEmailSettings(current=>({...current,email:data.email||"",configured:Boolean(data.configured),ccEmail:data.ccEmail||"IT@bhorukapark.com",updatedAt:data.updatedAt||null}));}
+  async function loadEmailSettings(){const response=await fetch("/api/admin/email-settings");const data=await response.json();if(response.ok)setEmailSettings(current=>({...current,email:data.email||"",configured:Boolean(data.configured),ccEmail:data.ccEmail||"",updatedAt:data.updatedAt||null}));}
   async function saveEmailSettings(event:React.FormEvent){event.preventDefault();setEmailError("");setEmailMessage("");const response=await fetch("/api/admin/email-settings",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(emailSettings)});const data=await response.json();if(!response.ok)return setEmailError(data.error||"Unable to save email settings.");setEmailSettings(current=>({...current,appPassword:"",configured:true,ccEmail:data.ccEmail,updatedAt:data.updatedAt}));setEmailMessage("Gmail settings saved securely.");}
-  async function sendTestEmail(){setEmailError("");setEmailMessage("");const response=await fetch("/api/admin/email-settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({recipient:emailSettings.recipient||emailSettings.email})});const data=await response.json();if(!response.ok)return setEmailError(data.error||"Unable to send test email.");setEmailMessage(`Test email sent to ${data.recipient} with IT@bhorukapark.com in CC.`);}
+  async function sendTestEmail(){setEmailError("");setEmailMessage("");const response=await fetch("/api/admin/email-settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({recipient:emailSettings.recipient||emailSettings.email})});const data=await response.json();if(!response.ok)return setEmailError(data.error||"Unable to send test email.");setEmailMessage(`Test email sent to ${data.recipient}${data.ccEmail ? ` with ${data.ccEmail} in CC.` : "."}`);}
   function csv(){
     const headers=["Visitor ID","Name","Email","Phone","Company","Type","Meeting With","Purpose","Check In (IST)","Check Out (IST)","Status","Photo URL"];
     const rows=visitors.map(v=>[v.id,v.name,v.email||"",v.phone,v.company||"",v.visitor_type,v.meeting_with_name,v.purpose||"",formatISTDateTime(v.check_in),v.check_out?formatISTDateTime(v.check_out):"",v.status,v.photo_url||""]);
@@ -144,7 +144,7 @@ export default function AdminPanel(){
         <form onSubmit={saveEmailSettings} className="grid email-settings-form">
           <div><label htmlFor="gmail-address">Gmail address</label><input id="gmail-address" type="email" required placeholder="reception@gmail.com" value={emailSettings.email} onChange={e=>setEmailSettings({...emailSettings,email:e.target.value})}/></div>
           <div><label htmlFor="gmail-app-password">Gmail App Password</label><input id="gmail-app-password" type="password" required={!emailSettings.configured} placeholder={emailSettings.configured?"Saved securely — enter a new one to replace it":"16-character App Password"} value={emailSettings.appPassword} onChange={e=>setEmailSettings({...emailSettings,appPassword:e.target.value})}/></div>
-          <div><label>Automatic CC</label><input value={emailSettings.ccEmail} readOnly /></div>
+          <div><label htmlFor="gmail-cc">CC email addresses <span className="optional">Optional, up to 10</span></label><textarea id="gmail-cc" rows={3} placeholder="person1@example.com, person2@example.com" value={emailSettings.ccEmail} onChange={e=>setEmailSettings({...emailSettings,ccEmail:e.target.value})}/><small className="muted">Separate addresses with commas, semicolons, or new lines.</small></div>
           <button className="btn primary" type="submit">Save Gmail settings</button>
         </form>
         <div className="test-email-box"><div><strong>Send a test email</strong><p className="muted">Confirm the Gmail connection before receiving visitor alerts.</p></div><div className="test-email-controls"><input aria-label="Test recipient" type="email" placeholder={emailSettings.email||"Test recipient email"} value={emailSettings.recipient} onChange={e=>setEmailSettings({...emailSettings,recipient:e.target.value})}/><button type="button" className="btn secondary" disabled={!emailSettings.configured} onClick={sendTestEmail}>Send test</button></div></div>

@@ -33,7 +33,7 @@ create table if not exists email_settings (
   provider text not null default 'gmail',
   email text not null,
   app_password_encrypted text not null,
-  cc_email text not null default 'IT@bhorukapark.com',
+  cc_email text not null default '',
   updated_at timestamptz not null default now()
 );
 

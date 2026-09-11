@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   const supabaseAdmin = getSupabaseAdmin();
   const phone = req.nextUrl.searchParams.get("phone")?.trim();
   if (phone) {
-    const { data, error } = await supabaseAdmin.from("visitors").select("name,email,company,photo_url").eq("phone", phone).order("check_in", { ascending: false }).limit(1).maybeSingle();
+    const { data, error } = await supabaseAdmin.from("visitors").select("id,name,email,phone,company,visitor_type,purpose,meeting_with_name,photo_url,status,check_in,check_out").eq("phone", phone).order("check_in", { ascending: false }).limit(1).maybeSingle();
     if (error) return NextResponse.json({error:error.message}, {status:500});
     return NextResponse.json({visitor: data || null});
   }
@@ -19,8 +19,10 @@ export async function POST(req: NextRequest) {
   try {
     const supabaseAdmin = getSupabaseAdmin();
     const body = await req.json();
-    const required = ["name","phone","meeting_with_id","meeting_with_name"];
-    for (const k of required) if (!body[k]) return NextResponse.json({error:`${k} is required.`},{status:400});
+    const required = ["name","phone","email","company","purpose","meeting_with_id","meeting_with_name"];
+    for (const k of required) if (!String(body[k] || "").trim()) return NextResponse.json({error:`${k} is required.`},{status:400});
+    if (!/^\d{10}$/.test(String(body.phone).trim())) return NextResponse.json({error:"A valid 10-digit mobile number is required."},{status:400});
+    if (!/^\S+@\S+\.\S+$/.test(String(body.email).trim())) return NextResponse.json({error:"A valid email address is required."},{status:400});
     const { data: host, error: hostError } = await supabaseAdmin.from("employees").select("id,name,email,active").eq("id", body.meeting_with_id).eq("active", true).single();
     if (hostError || !host) return NextResponse.json({error:"The selected host is no longer available."},{status:400});
     const hostEmail = String(host.email || "").trim();
