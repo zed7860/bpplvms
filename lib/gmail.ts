@@ -20,7 +20,16 @@ function decryptSecret(value: string) {
   const [ivHex, tagHex, encryptedHex] = value.split(":");
   const decipher = crypto.createDecipheriv(algorithm, encryptionKey(), Buffer.from(ivHex, "hex"));
   decipher.setAuthTag(Buffer.from(tagHex, "hex"));
+<<<<<<< HEAD
   return Buffer.concat([decipher.update(Buffer.from(encryptedHex, "hex")), decipher.final()]).toString("utf8");
+=======
+  try {
+    return Buffer.concat([decipher.update(Buffer.from(encryptedHex, "hex")), decipher.final()]).toString("utf8");
+  } catch {
+    // SESSION_SECRET changed since the App Password was saved, so it can no longer be decrypted.
+    throw new Error("Email settings could not be decrypted because SESSION_SECRET changed. Re-save the Gmail App Password in Admin -> Email settings.");
+  }
+>>>>>>> 6351bec (email edit and delete)
 }
 
 export async function getGmailSettings() {

@@ -20,6 +20,11 @@ export default function AdminPanel(){
   const [emailMessage,setEmailMessage]=useState("");
   const [emailError,setEmailError]=useState("");
   const [employeeEmailDrafts,setEmployeeEmailDrafts]=useState<Record<string,string>>({});
+<<<<<<< HEAD
+=======
+  const [editingEmployeeId,setEditingEmployeeId]=useState<string|null>(null);
+  const [editDraft,setEditDraft]=useState({name:"",department:"",email:""});
+>>>>>>> 6351bec (email edit and delete)
 
   async function loadVisitors(){
     setLoading(true); const r=await fetch(`/api/reports?from=${from}&to=${to}`); const d=await r.json(); setVisitors(d.visitors||[]); setLoading(false);
@@ -35,6 +40,25 @@ export default function AdminPanel(){
   async function checkout(id:string){await fetch(`/api/visitors/${id}/checkout`,{method:"PATCH"});loadVisitors();}
   async function addEmployee(e:React.FormEvent){e.preventDefault();setEmployeeError("");const response=await fetch("/api/admin/employees",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(form)});const data=await response.json();if(!response.ok){setEmployeeError(data.error||"Unable to add employee.");return;}setForm({name:"",department:"",email:""});loadEmployees();}
   async function toggleEmployee(x:Employee){await fetch("/api/admin/employees",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({...x,active:!x.active})});loadEmployees();}
+<<<<<<< HEAD
+=======
+  function startEditEmployee(x:Employee){setEditingEmployeeId(x.id);setEditDraft({name:x.name,department:x.department||"",email:x.email||""});setEmployeeError("");}
+  function cancelEditEmployee(){setEditingEmployeeId(null);}
+  async function saveEditEmployee(x:Employee){
+    if(!editDraft.name.trim()){setEmployeeError("Employee name is required.");return;}
+    const response=await fetch("/api/admin/employees",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({...x,name:editDraft.name.trim(),department:editDraft.department.trim(),email:editDraft.email.trim()})});
+    const data=await response.json();
+    if(!response.ok){setEmployeeError(data.error||"Unable to update employee.");return;}
+    setEmployeeError(""); setEditingEmployeeId(null); loadEmployees();
+  }
+  async function deleteEmployee(x:Employee){
+    if(!confirm(`Delete ${x.name}? This cannot be undone.`)) return;
+    const response=await fetch(`/api/admin/employees?id=${x.id}`,{method:"DELETE"});
+    const data=await response.json();
+    if(!response.ok){setEmployeeError(data.error||"Unable to delete employee.");return;}
+    setEmployeeError(""); loadEmployees();
+  }
+>>>>>>> 6351bec (email edit and delete)
   async function saveEmployeeEmail(employee:Employee){
     const email=(employeeEmailDrafts[employee.id]||"").trim();
     if (!/^\S+@\S+\.\S+$/.test(email)) { setEmployeeError(`Enter a valid email address for ${employee.name}.`); return; }
@@ -133,8 +157,18 @@ export default function AdminPanel(){
           <button className="btn primary">Add Employee</button>
         </form></div>
         <div className="card employee-list-card"><div className="space"><div><p className="eyebrow">Directory</p><h2>Employee list</h2></div><span className="count-pill">{employees.length} total</span></div>{employees.map(x=><div key={x.id} className="employee-row">
+<<<<<<< HEAD
           <div className="employee-info"><b>{x.name}</b><span className="muted">{x.department||""}</span><div className="employee-email-editor"><input aria-label={`Email for ${x.name}`} type="email" placeholder="employee@bhorukapark.com" value={employeeEmailDrafts[x.id]||""} onChange={event=>setEmployeeEmailDrafts({...employeeEmailDrafts,[x.id]:event.target.value})}/><button className="btn secondary small" onClick={()=>saveEmployeeEmail(x)}>Save email</button></div>{!x.email&&<small className="missing-email">Email required for visitor notifications</small>}</div>
           <button className="btn secondary small" onClick={()=>toggleEmployee(x)}>{x.active?"Disable":"Enable"}</button>
+=======
+          {editingEmployeeId===x.id ? <div className="employee-info">
+            <input aria-label="Edit name" value={editDraft.name} onChange={e=>setEditDraft({...editDraft,name:e.target.value})}/>
+            <input aria-label="Edit department" placeholder="Department" value={editDraft.department} onChange={e=>setEditDraft({...editDraft,department:e.target.value})}/>
+            <input aria-label="Edit email" type="email" placeholder="employee@bhorukapark.com" value={editDraft.email} onChange={e=>setEditDraft({...editDraft,email:e.target.value})}/>
+            <div className="table-actions"><button className="btn primary small" onClick={()=>saveEditEmployee(x)}>Save</button><button className="btn secondary small" onClick={cancelEditEmployee}>Cancel</button></div>
+          </div> : <div className="employee-info"><b>{x.name}</b><span className="muted">{x.department||""}</span><div className="employee-email-editor"><input aria-label={`Email for ${x.name}`} type="email" placeholder="employee@bhorukapark.com" value={employeeEmailDrafts[x.id]||""} onChange={event=>setEmployeeEmailDrafts({...employeeEmailDrafts,[x.id]:event.target.value})}/><button className="btn secondary small" onClick={()=>saveEmployeeEmail(x)}>Save email</button></div>{!x.email&&<small className="missing-email">Email required for visitor notifications</small>}</div>}
+          <div className="table-actions"><button className="btn secondary small" onClick={()=>toggleEmployee(x)}>{x.active?"Disable":"Enable"}</button>{editingEmployeeId!==x.id&&<button className="btn secondary small" onClick={()=>startEditEmployee(x)}>Edit</button>}<button className="btn danger small" onClick={()=>deleteEmployee(x)}>Delete</button></div>
+>>>>>>> 6351bec (email edit and delete)
         </div>)}</div>
       </div> :
       <div className="card email-settings-card">

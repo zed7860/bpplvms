@@ -26,3 +26,16 @@ export async function PATCH(req:NextRequest) {
   if(error) return NextResponse.json({error:error.message},{status:500});
   return NextResponse.json(data);
 }
+<<<<<<< HEAD
+=======
+export async function DELETE(req:NextRequest) {
+  if (!(await isAdmin())) return NextResponse.json({error:"Unauthorized"},{status:401});
+  const supabaseAdmin = getSupabaseAdmin();
+  const {searchParams}=new URL(req.url);
+  const id=searchParams.get("id");
+  if(!id) return NextResponse.json({error:"Employee id required"},{status:400});
+  const {error}=await supabaseAdmin.from("employees").delete().eq("id",id);
+  if(error) return NextResponse.json({error:error.message},{status:500});
+  return NextResponse.json({ok:true});
+}
+>>>>>>> 6351bec (email edit and delete)
