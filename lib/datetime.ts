@@ -21,3 +21,13 @@ export function formatISTTime24(input: string | Date): string {
 export function formatISTDateTime(input: string | Date): string {
   return `${formatISTDate(input)}, ${formatISTTime12(input)} (${formatISTTime24(input)} IST)`;
 }
+
+/** Today's calendar date in IST as YYYY-MM-DD, for use as an <input type="date"> value. */
+export function todayIST(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: IST_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+}
+
+/** Converts an IST calendar date (YYYY-MM-DD) into a UTC ISO instant at IST midnight/day-end. */
+export function istDateBoundary(date: string, end: boolean): string {
+  return new Date(`${date}T${end ? "23:59:59.999" : "00:00:00.000"}+05:30`).toISOString();
+}

@@ -26,8 +26,6 @@ export async function PATCH(req:NextRequest) {
   if(error) return NextResponse.json({error:error.message},{status:500});
   return NextResponse.json(data);
 }
-<<<<<<< HEAD
-=======
 export async function DELETE(req:NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({error:"Unauthorized"},{status:401});
   const supabaseAdmin = getSupabaseAdmin();
@@ -38,4 +36,3 @@ export async function DELETE(req:NextRequest) {
   if(error) return NextResponse.json({error:error.message},{status:500});
   return NextResponse.json({ok:true});
 }
->>>>>>> 6351bec (email edit and delete)

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { jsPDF } from "jspdf";
 import * as XLSX from "xlsx";
-import { formatISTDateTime, formatISTTime12, formatISTTime24 } from "@/lib/datetime";
+import { formatISTDateTime, formatISTTime12, formatISTTime24, todayIST } from "@/lib/datetime";
 
 type Visitor={id:string;name:string;email:string|null;phone:string;company:string|null;visitor_type:string;photo_url:string|null;meeting_with_name:string;purpose:string|null;check_in:string;check_out:string|null;status:string};
 type Employee={id:string;name:string;department:string|null;email:string|null;active:boolean};
@@ -10,8 +10,8 @@ type Employee={id:string;name:string;department:string|null;email:string|null;ac
 export default function AdminPanel(){
   const [visitors,setVisitors]=useState<Visitor[]>([]);
   const [employees,setEmployees]=useState<Employee[]>([]);
-  const [from,setFrom]=useState(new Date().toISOString().slice(0,10));
-  const [to,setTo]=useState(new Date().toISOString().slice(0,10));
+  const [from,setFrom]=useState(todayIST());
+  const [to,setTo]=useState(todayIST());
   const [tab,setTab]=useState<"visitors"|"employees"|"email">("visitors");
   const [form,setForm]=useState({name:"",department:"",email:""});
   const [loading,setLoading]=useState(false);
@@ -20,11 +20,8 @@ export default function AdminPanel(){
   const [emailMessage,setEmailMessage]=useState("");
   const [emailError,setEmailError]=useState("");
   const [employeeEmailDrafts,setEmployeeEmailDrafts]=useState<Record<string,string>>({});
-<<<<<<< HEAD
-=======
   const [editingEmployeeId,setEditingEmployeeId]=useState<string|null>(null);
   const [editDraft,setEditDraft]=useState({name:"",department:"",email:""});
->>>>>>> 6351bec (email edit and delete)
 
   async function loadVisitors(){
     setLoading(true); const r=await fetch(`/api/reports?from=${from}&to=${to}`); const d=await r.json(); setVisitors(d.visitors||[]); setLoading(false);
@@ -40,8 +37,6 @@ export default function AdminPanel(){
   async function checkout(id:string){await fetch(`/api/visitors/${id}/checkout`,{method:"PATCH"});loadVisitors();}
   async function addEmployee(e:React.FormEvent){e.preventDefault();setEmployeeError("");const response=await fetch("/api/admin/employees",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(form)});const data=await response.json();if(!response.ok){setEmployeeError(data.error||"Unable to add employee.");return;}setForm({name:"",department:"",email:""});loadEmployees();}
   async function toggleEmployee(x:Employee){await fetch("/api/admin/employees",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({...x,active:!x.active})});loadEmployees();}
-<<<<<<< HEAD
-=======
   function startEditEmployee(x:Employee){setEditingEmployeeId(x.id);setEditDraft({name:x.name,department:x.department||"",email:x.email||""});setEmployeeError("");}
   function cancelEditEmployee(){setEditingEmployeeId(null);}
   async function saveEditEmployee(x:Employee){
@@ -58,7 +53,6 @@ export default function AdminPanel(){
     if(!response.ok){setEmployeeError(data.error||"Unable to delete employee.");return;}
     setEmployeeError(""); loadEmployees();
   }
->>>>>>> 6351bec (email edit and delete)
   async function saveEmployeeEmail(employee:Employee){
     const email=(employeeEmailDrafts[employee.id]||"").trim();
     if (!/^\S+@\S+\.\S+$/.test(email)) { setEmployeeError(`Enter a valid email address for ${employee.name}.`); return; }
@@ -144,7 +138,7 @@ export default function AdminPanel(){
             <td>{v.phone}<br/>{v.email||""}</td>
             <td>{v.meeting_with_name}</td><td>{v.visitor_type}</td>
             <td>{formatISTTime12(v.check_in)}<br/><small className="muted">{formatISTTime24(v.check_in)} · IST</small></td>
-            <td><span className={`badge ${v.status==="OUT"?"out":""}`}>{v.status}</span>{v.check_out&&<><br/><small>{formatISTTime12(v.check_out)} ({formatISTTime24(v.check_out)})</small></>}</td>
+            <td><span className={`badge ${v.status==="OUT"?"out":""}`}>{v.status}</span>{v.check_out&&<><br/><small>{formatISTTime12(v.check_out)}</small><br/><small className="muted">{formatISTTime24(v.check_out)} · IST</small></>}</td>
             <td><div className="table-actions">{v.status==="IN"&&<button className="btn secondary small" onClick={()=>checkout(v.id)}>Check out</button>}<button className="btn primary small" onClick={()=>downloadPdf(v)}>PDF</button></div></td>
           </tr>)}</tbody></table></div>}
         </div>
@@ -157,10 +151,6 @@ export default function AdminPanel(){
           <button className="btn primary">Add Employee</button>
         </form></div>
         <div className="card employee-list-card"><div className="space"><div><p className="eyebrow">Directory</p><h2>Employee list</h2></div><span className="count-pill">{employees.length} total</span></div>{employees.map(x=><div key={x.id} className="employee-row">
-<<<<<<< HEAD
-          <div className="employee-info"><b>{x.name}</b><span className="muted">{x.department||""}</span><div className="employee-email-editor"><input aria-label={`Email for ${x.name}`} type="email" placeholder="employee@bhorukapark.com" value={employeeEmailDrafts[x.id]||""} onChange={event=>setEmployeeEmailDrafts({...employeeEmailDrafts,[x.id]:event.target.value})}/><button className="btn secondary small" onClick={()=>saveEmployeeEmail(x)}>Save email</button></div>{!x.email&&<small className="missing-email">Email required for visitor notifications</small>}</div>
-          <button className="btn secondary small" onClick={()=>toggleEmployee(x)}>{x.active?"Disable":"Enable"}</button>
-=======
           {editingEmployeeId===x.id ? <div className="employee-info">
             <input aria-label="Edit name" value={editDraft.name} onChange={e=>setEditDraft({...editDraft,name:e.target.value})}/>
             <input aria-label="Edit department" placeholder="Department" value={editDraft.department} onChange={e=>setEditDraft({...editDraft,department:e.target.value})}/>
@@ -168,7 +158,6 @@ export default function AdminPanel(){
             <div className="table-actions"><button className="btn primary small" onClick={()=>saveEditEmployee(x)}>Save</button><button className="btn secondary small" onClick={cancelEditEmployee}>Cancel</button></div>
           </div> : <div className="employee-info"><b>{x.name}</b><span className="muted">{x.department||""}</span><div className="employee-email-editor"><input aria-label={`Email for ${x.name}`} type="email" placeholder="employee@bhorukapark.com" value={employeeEmailDrafts[x.id]||""} onChange={event=>setEmployeeEmailDrafts({...employeeEmailDrafts,[x.id]:event.target.value})}/><button className="btn secondary small" onClick={()=>saveEmployeeEmail(x)}>Save email</button></div>{!x.email&&<small className="missing-email">Email required for visitor notifications</small>}</div>}
           <div className="table-actions"><button className="btn secondary small" onClick={()=>toggleEmployee(x)}>{x.active?"Disable":"Enable"}</button>{editingEmployeeId!==x.id&&<button className="btn secondary small" onClick={()=>startEditEmployee(x)}>Edit</button>}<button className="btn danger small" onClick={()=>deleteEmployee(x)}>Delete</button></div>
->>>>>>> 6351bec (email edit and delete)
         </div>)}</div>
       </div> :
       <div className="card email-settings-card">
