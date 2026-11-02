@@ -1,4 +1,4 @@
-const CACHE_NAME = "bhoruka-vms-v4";
+const CACHE_NAME = "bhoruka-vms-v6";
 const APP_SHELL = [
   "/",
   "/register",

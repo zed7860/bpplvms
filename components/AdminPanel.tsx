@@ -4,7 +4,7 @@ import { jsPDF } from "jspdf";
 import * as XLSX from "xlsx";
 import { formatISTDateTime, formatISTTime12, formatISTTime24, todayIST } from "@/lib/datetime";
 
-type Visitor={id:string;name:string;email:string|null;phone:string;company:string|null;visitor_type:string;photo_url:string|null;meeting_with_name:string;purpose:string|null;check_in:string;check_out:string|null;status:string};
+type Visitor={id:string;name:string;email:string|null;phone:string;company:string|null;visitor_type:string;photo_url:string|null;meeting_with_name:string;purpose:string|null;check_in:string;check_out:string|null;status:string;feedback_rating:number|null;feedback_review:string|null};
 type Employee={id:string;name:string;department:string|null;email:string|null;active:boolean};
 
 export default function AdminPanel(){
@@ -65,8 +65,8 @@ export default function AdminPanel(){
   async function saveEmailSettings(event:React.FormEvent){event.preventDefault();setEmailError("");setEmailMessage("");const response=await fetch("/api/admin/email-settings",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(emailSettings)});const data=await response.json();if(!response.ok)return setEmailError(data.error||"Unable to save email settings.");setEmailSettings(current=>({...current,appPassword:"",configured:true,ccEmail:data.ccEmail,updatedAt:data.updatedAt}));setEmailMessage("Gmail settings saved securely.");}
   async function sendTestEmail(){setEmailError("");setEmailMessage("");const response=await fetch("/api/admin/email-settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({recipient:emailSettings.recipient||emailSettings.email})});const data=await response.json();if(!response.ok)return setEmailError(data.error||"Unable to send test email.");setEmailMessage(`Test email sent to ${data.recipient}${data.ccEmail ? ` with ${data.ccEmail} in CC.` : "."}`);}
   function csv(){
-    const headers=["Visitor ID","Name","Email","Phone","Company","Type","Meeting With","Purpose","Check In (IST)","Check Out (IST)","Status","Photo URL"];
-    const rows=visitors.map(v=>[v.id,v.name,v.email||"",v.phone,v.company||"",v.visitor_type,v.meeting_with_name,v.purpose||"",formatISTDateTime(v.check_in),v.check_out?formatISTDateTime(v.check_out):"",v.status,v.photo_url||""]);
+    const headers=["Visitor ID","Name","Email","Phone","Company","Type","Meeting With","Purpose","Check In (IST)","Check Out (IST)","Rating (1-5)","Review","Status","Photo URL"];
+    const rows=visitors.map(v=>[v.id,v.name,v.email||"",v.phone,v.company||"",v.visitor_type,v.meeting_with_name,v.purpose||"",formatISTDateTime(v.check_in),v.check_out?formatISTDateTime(v.check_out):"",v.feedback_rating?.toString()||"",v.feedback_review||"",v.status,v.photo_url||""]);
     const esc=(value:string|null|undefined)=>{
       const text=String(value??"");
       const safe=/^[=+\-@]/.test(text)?`'${text}`:text;
@@ -81,9 +81,9 @@ export default function AdminPanel(){
     URL.revokeObjectURL(url);
   }
   function xlsx(){
-    const rows=visitors.map(v=>({"Visitor ID":v.id,"Name":v.name,"Email":v.email||"","Phone":v.phone,"Company":v.company||"","Type":v.visitor_type,"Meeting With":v.meeting_with_name,"Purpose":v.purpose||"","Check In (IST)":formatISTDateTime(v.check_in),"Check Out (IST)":v.check_out?formatISTDateTime(v.check_out):"","Status":v.status,"Photo URL":v.photo_url||""}));
+    const rows=visitors.map(v=>({"Visitor ID":v.id,"Name":v.name,"Email":v.email||"","Phone":v.phone,"Company":v.company||"","Type":v.visitor_type,"Meeting With":v.meeting_with_name,"Purpose":v.purpose||"","Check In (IST)":formatISTDateTime(v.check_in),"Check Out (IST)":v.check_out?formatISTDateTime(v.check_out):"","Rating (1-5)":v.feedback_rating||"","Review":v.feedback_review||"","Status":v.status,"Photo URL":v.photo_url||""}));
     const sheet=XLSX.utils.json_to_sheet(rows);
-    sheet["!cols"]=[{wch:38},{wch:22},{wch:28},{wch:17},{wch:22},{wch:14},{wch:24},{wch:32},{wch:24},{wch:24},{wch:12},{wch:55}];
+    sheet["!cols"]=[{wch:38},{wch:22},{wch:28},{wch:17},{wch:22},{wch:14},{wch:24},{wch:32},{wch:24},{wch:24},{wch:14},{wch:42},{wch:12},{wch:55}];
     const workbook=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook,sheet,"Visitors");
     XLSX.writeFile(workbook,`visitor-report-${from}-to-${to}.xlsx`);
@@ -102,7 +102,7 @@ export default function AdminPanel(){
       } catch { }
     }
     doc.setTextColor(23,50,74); doc.setFontSize(10);
-    [["Name",visitor.name],["Email",visitor.email||"Not provided"],["Phone",visitor.phone],["Company",visitor.company||"Not provided"],["Visitor type",visitor.visitor_type],["Meeting with",visitor.meeting_with_name],["Purpose",visitor.purpose||"Not provided"],["Check in",formatISTDateTime(visitor.check_in)],["Check out",visitor.check_out?formatISTDateTime(visitor.check_out):"Still in"],["Status",visitor.status]].forEach(([label,value])=>{doc.setFont("helvetica","bold");doc.text(`${label}:`,20,y);doc.setFont("helvetica","normal");doc.text(String(value),57,y);y+=9;});
+    [["Name",visitor.name],["Email",visitor.email||"Not provided"],["Phone",visitor.phone],["Company",visitor.company||"Not provided"],["Visitor type",visitor.visitor_type],["Meeting with",visitor.meeting_with_name],["Purpose",visitor.purpose||"Not provided"],["Check in",formatISTDateTime(visitor.check_in)],["Check out",visitor.check_out?formatISTDateTime(visitor.check_out):"Still in"],["Rating",visitor.feedback_rating?`${visitor.feedback_rating}/5 stars`:"Not provided"],["Review",visitor.feedback_review||"Not provided"],["Status",visitor.status]].forEach(([label,value])=>{doc.setFont("helvetica","bold");doc.text(`${label}:`,20,y);doc.setFont("helvetica","normal");const lines=doc.splitTextToSize(String(value),125);doc.text(lines,57,y);y+=Math.max(9,lines.length*5);});
     doc.setFontSize(8); doc.setTextColor(102,119,123); doc.text(`Visitor ID: ${visitor.id}`,20, y+8);
     doc.save(`visitor-${visitor.name.toLowerCase().replace(/[^a-z0-9]+/g,"-")}-${visitor.id.slice(0,8)}.pdf`);
   }
@@ -131,13 +131,13 @@ export default function AdminPanel(){
             <div><label>To</label><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></div>
             <button className="btn secondary" onClick={loadVisitors}>Apply</button>
           </div>
-          {loading ? <p className="loading-state">Loading visitor activity...</p> : <div className="table-wrap"><table><thead><tr><th>Photo</th><th>Visitor</th><th>Contact</th><th>Meeting With</th><th>Type</th><th>Check In</th><th>Status</th><th></th></tr></thead>
+          {loading ? <p className="loading-state">Loading visitor activity...</p> : <div className="table-wrap"><table><thead><tr><th>Photo</th><th>Visitor</th><th>Contact</th><th>Meeting With</th><th>Type</th><th>Check In</th><th>Feedback</th><th>Status</th><th></th></tr></thead>
           <tbody>{visitors.map(v=><tr key={v.id}>
             <td>{v.photo_url?<img src={v.photo_url} className="photo" alt="" />:"—"}</td>
             <td><b>{v.name}</b><br/><span className="muted">{v.company||""}</span></td>
             <td>{v.phone}<br/>{v.email||""}</td>
             <td>{v.meeting_with_name}</td><td>{v.visitor_type}</td>
-            <td>{formatISTTime12(v.check_in)}<br/><small className="muted">{formatISTTime24(v.check_in)} · IST</small></td>
+            <td>{formatISTTime12(v.check_in)}<br/><small className="muted">{formatISTTime24(v.check_in)} · IST</small></td><td>{v.feedback_rating?<><span className="admin-rating">{"★".repeat(v.feedback_rating)}{"☆".repeat(5-v.feedback_rating)}</span>{v.feedback_review&&<><br/><small className="muted feedback-review-cell">{v.feedback_review}</small></>}</>:"—"}</td>
             <td><span className={`badge ${v.status==="OUT"?"out":""}`}>{v.status}</span>{v.check_out&&<><br/><small>{formatISTTime12(v.check_out)}</small><br/><small className="muted">{formatISTTime24(v.check_out)} · IST</small></>}</td>
             <td><div className="table-actions">{v.status==="IN"&&<button className="btn secondary small" onClick={()=>checkout(v.id)}>Check out</button>}<button className="btn primary small" onClick={()=>downloadPdf(v)}>PDF</button></div></td>
           </tr>)}</tbody></table></div>}

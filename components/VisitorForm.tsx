@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatISTDate, formatISTTime12, formatISTTime24 } from "@/lib/datetime";
 
 type Employee = { id: string; name: string; department: string | null };
@@ -34,6 +34,10 @@ export default function VisitorForm() {
   const [loading, setLoading] = useState(false);
   const [checkingPhone, setCheckingPhone] = useState(false);
   const [returningVisitor, setReturningVisitor] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("user");
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [values, setValues] = useState({ name: "", phone: "", email: "", company: "", visitor_type: "Meeting", purpose: "" });
 
   useEffect(() => {
@@ -43,6 +47,14 @@ export default function VisitorForm() {
       setEmployees(data.employees || []);
     }).catch(() => setError("Unable to load the employee list. Please ask reception for assistance."));
   }, []);
+
+  useEffect(() => () => {
+    streamRef.current?.getTracks().forEach(track => track.stop());
+  }, []);
+
+  useEffect(() => {
+    if (step !== 4 && streamRef.current) stopCamera();
+  }, [step]);
 
   const matches = useMemo(() => {
     const query = employeeQuery.trim().toLowerCase();
@@ -89,6 +101,54 @@ export default function VisitorForm() {
     reader.readAsDataURL(file);
   }
 
+  function stopCamera() {
+    streamRef.current?.getTracks().forEach(track => track.stop());
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setCameraOpen(false);
+  }
+
+  async function startCamera(facingMode: "user" | "environment" = "user") {
+    setError("");
+    streamRef.current?.getTracks().forEach(track => track.stop());
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false
+      });
+      streamRef.current = stream;
+      setCameraFacing(facingMode);
+      setCameraOpen(true);
+      requestAnimationFrame(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(() => undefined);
+        }
+      });
+    } catch {
+      setCameraOpen(false);
+      setError("Camera access was unavailable. Allow camera permission or upload a photo instead.");
+    }
+  }
+
+  function capturePhoto() {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth || !video.videoHeight) return setError("Camera is still starting. Please try again.");
+    const scale = Math.min(1, 900 / Math.max(video.videoWidth, video.videoHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(video.videoWidth * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
+    const context = canvas.getContext("2d");
+    if (!context) return setError("Unable to capture the photo.");
+    if (cameraFacing === "user") {
+      context.translate(canvas.width, 0);
+      context.scale(-1, 1);
+    }
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    setPhoto(canvas.toDataURL("image/jpeg", 0.78));
+    stopCamera();
+  }
+
   function validate() {
     if (step === 0 && !/^\d{10}$/.test(values.phone.trim())) return "Please enter a valid 10-digit mobile number.";
     if (step === 1 && !values.name.trim()) return "Please enter your full name.";
@@ -131,11 +191,11 @@ export default function VisitorForm() {
     <div className="stepper" aria-label={`Step ${step + 1} of ${steps.length}`} aria-live="polite">{steps.map((label, index) => <div className={`stepper-item ${index === step ? "active" : ""} ${index < step ? "complete" : ""}`} key={label} aria-current={index === step ? "step" : undefined}><span>{index < step ? "✓" : index + 1}</span><small>{label}</small></div>)}</div>
     {error && <div className="error" role="alert">{error}</div>}
     <div className="question-card">
-      {step === 0 && <><p className="eyebrow">Step 1 of 5</p><h2>Let’s start with your mobile number</h2><p className="question-help">We’ll check if we already have your details on file.</p><label htmlFor="visitor-phone">Mobile number</label><input id="visitor-phone" type="tel" inputMode="numeric" maxLength={10} value={values.phone} onChange={event => { update("phone", event.target.value.replace(/\D/g, "")); setReturningVisitor(false); }} onKeyDown={event => event.key === "Enter" && next()} placeholder="Enter your 10-digit mobile number" autoFocus />{checkingPhone && <p className="search-hint">Checking your details…</p>}</>}
-      {step === 1 && <><p className="eyebrow">Step 2 of 5</p><h2>{returningVisitor ? `Welcome back, ${values.name.split(" ")[0] || "there"}!` : "What is your name?"}</h2><p className="question-help">{returningVisitor ? "We found your previous details. Please confirm or update them." : "We’ll use this to register your visit."}</p><div className="field-stack"><div><label htmlFor="visitor-name">Full name</label><input id="visitor-name" value={values.name} onChange={event => update("name", event.target.value)} onKeyDown={event => event.key === "Enter" && next()} placeholder="Enter your full name" autoFocus /></div><div><label htmlFor="visitor-email">Email address</label><input id="visitor-email" type="email" required value={values.email} onChange={event => update("email", event.target.value)} placeholder="name@example.com" /></div><div><label htmlFor="visitor-company">Company / organisation</label><input id="visitor-company" required value={values.company} onChange={event => update("company", event.target.value)} placeholder="Company name" /></div></div></>}
-      {step === 2 && <><p className="eyebrow">Step 3 of 5</p><h2>Tell us about your visit</h2><p className="question-help">A few details help us welcome you better.</p><div className="field-stack"><div><label htmlFor="visitor-type">Visitor type</label><select id="visitor-type" value={values.visitor_type} onChange={event => update("visitor_type", event.target.value)}><option>Meeting</option><option>Interview</option><option>Vendor</option><option>Delivery</option><option>Other</option></select></div><div><label htmlFor="visitor-purpose">Purpose / remarks</label><textarea id="visitor-purpose" required value={values.purpose} onChange={event => update("purpose", event.target.value)} placeholder="What brings you here today?" /></div></div></>}
-      {step === 3 && <><p className="eyebrow">Step 4 of 5</p><h2>Who are you meeting?</h2><p className="question-help">Start typing at least three letters of their name.</p><label htmlFor="employee-search">Employee name</label><div className="employee-search"><input id="employee-search" value={employeeQuery} onChange={event => { setEmployeeQuery(event.target.value); setSelectedEmployee(null); }} onKeyDown={event => event.key === "Enter" && next()} placeholder="For example: Raj" autoComplete="off" autoFocus />{employeeQuery.trim().length > 0 && employeeQuery.trim().length < 3 && <p className="search-hint">Type {3 - employeeQuery.trim().length} more letter{employeeQuery.trim().length === 2 ? "" : "s"} to see matches.</p>}{matches.length > 0 && <ul className="employee-results" role="listbox">{matches.map(employee => <li key={employee.id}><button type="button" role="option" onClick={() => { setSelectedEmployee(employee); setEmployeeQuery(employee.name); }}>{employee.name}<small>{employee.department || "Bhoruka Park"}</small></button></li>)}</ul>}</div>{selectedEmployee && <div className="selected-host" role="status">✓ Meeting with <strong>{selectedEmployee.name}</strong>{selectedEmployee.department ? ` · ${selectedEmployee.department}` : ""}</div>}{employeeQuery.trim().length >= 3 && !selectedEmployee && matches.length === 0 && <p className="search-hint">No matching employee found. Please ask reception for help.</p>}</>}
-      {step === 4 && <><p className="eyebrow">Step 5 of 5</p><h2>One last thing — your photo</h2><p className="question-help">This helps our reception team identify your visit.</p><label className="photo-picker" htmlFor="visitor-photo"><span className="photo-icon">◉</span><span>{photo ? "Photo ready — choose another" : "Take or upload your photo"}</span><small>JPG, PNG or camera photo</small><input key={photoInputKey} id="visitor-photo" type="file" accept="image/*" capture="user" onChange={event => event.target.files?.[0] && resizePhoto(event.target.files[0])} /></label>{photo && <img className="visitor-preview" src={photo} alt="Your registration preview" />}</>}
+      {step === 0 && <><p className="eyebrow">Step 1 of 5</p><h2>Let’s start with your mobile number</h2><p className="question-help">We’ll check if we already have your details on file.</p><label htmlFor="visitor-phone">Mobile number</label><input id="visitor-phone" type="tel" inputMode="numeric" maxLength={10} value={values.phone} onChange={event => { update("phone", event.target.value.replace(/\D/g, "")); setReturningVisitor(false); }} onKeyDown={event => event.key === "Enter" && next()} placeholder="Enter your 10-digit mobile number" autoComplete="off" autoCorrect="off" spellCheck={false} autoFocus />{checkingPhone && <p className="search-hint">Checking your details…</p>}</>}
+      {step === 1 && <><p className="eyebrow">Step 2 of 5</p><h2>{returningVisitor ? `Welcome back, ${values.name.split(" ")[0] || "there"}!` : "What is your name?"}</h2><p className="question-help">{returningVisitor ? "We found your previous details. Please confirm or update them." : "We’ll use this to register your visit."}</p><div className="field-stack"><div><label htmlFor="visitor-name">Full name</label><input id="visitor-name" value={values.name} onChange={event => update("name", event.target.value)} onKeyDown={event => event.key === "Enter" && next()} placeholder="Enter your full name" autoComplete="off" autoCorrect="off" spellCheck={false} autoFocus /></div><div><label htmlFor="visitor-email">Email address</label><input id="visitor-email" type="email" required value={values.email} onChange={event => update("email", event.target.value)} placeholder="name@example.com" autoComplete="off" autoCorrect="off" spellCheck={false} /></div><div><label htmlFor="visitor-company">Company / organisation</label><input id="visitor-company" required value={values.company} onChange={event => update("company", event.target.value)} placeholder="Company name" autoComplete="off" autoCorrect="off" spellCheck={false} /></div></div></>}
+      {step === 2 && <><p className="eyebrow">Step 3 of 5</p><h2>Tell us about your visit</h2><p className="question-help">A few details help us welcome you better.</p><div className="field-stack"><div><label htmlFor="visitor-type">Visitor type</label><select id="visitor-type" value={values.visitor_type} onChange={event => update("visitor_type", event.target.value)} autoComplete="off"><option>Meeting</option><option>Interview</option><option>Vendor</option><option>Delivery</option><option>Other</option></select></div><div><label htmlFor="visitor-purpose">Purpose / remarks</label><textarea id="visitor-purpose" required value={values.purpose} onChange={event => update("purpose", event.target.value)} placeholder="What brings you here today?" autoComplete="off" autoCorrect="off" spellCheck={false} /></div></div></>}
+      {step === 3 && <><p className="eyebrow">Step 4 of 5</p><h2>Who are you meeting?</h2><p className="question-help">Start typing at least three letters of their name.</p><label htmlFor="employee-search">Employee name</label><div className="employee-search"><input id="employee-search" value={employeeQuery} onChange={event => { setEmployeeQuery(event.target.value); setSelectedEmployee(null); }} onKeyDown={event => event.key === "Enter" && next()} placeholder="For example: Raj" autoComplete="off" autoCorrect="off" spellCheck={false} autoFocus />{employeeQuery.trim().length > 0 && employeeQuery.trim().length < 3 && <p className="search-hint">Type {3 - employeeQuery.trim().length} more letter{employeeQuery.trim().length === 2 ? "" : "s"} to see matches.</p>}{matches.length > 0 && <ul className="employee-results" role="listbox">{matches.map(employee => <li key={employee.id}><button type="button" role="option" onClick={() => { setSelectedEmployee(employee); setEmployeeQuery(employee.name); }}>{employee.name}<small>{employee.department || "Bhoruka Park"}</small></button></li>)}</ul>}</div>{selectedEmployee && <div className="selected-host" role="status">✓ Meeting with <strong>{selectedEmployee.name}</strong>{selectedEmployee.department ? ` · ${selectedEmployee.department}` : ""}</div>}{employeeQuery.trim().length >= 3 && !selectedEmployee && matches.length === 0 && <p className="search-hint">No matching employee found. Please ask reception for help.</p>}</>}
+      {step === 4 && <><p className="eyebrow">Step 5 of 5</p><h2>One last thing — your photo</h2><p className="question-help">The front camera opens first. Switch to the back camera only if needed.</p>{cameraOpen ? <div className="camera-capture"><video ref={videoRef} autoPlay muted playsInline className={cameraFacing === "user" ? "camera-mirrored" : ""} /><div className="camera-actions"><button type="button" className="btn secondary" onClick={() => startCamera(cameraFacing === "user" ? "environment" : "user")}>Switch to {cameraFacing === "user" ? "back" : "front"}</button><button type="button" className="btn primary" onClick={capturePhoto}>Take photo</button><button type="button" className="btn secondary" onClick={stopCamera}>Cancel</button></div></div> : <div className="photo-options"><button type="button" className="photo-picker" onClick={() => startCamera("user")}><span className="photo-icon">◉</span><span>{photo ? "Retake with front camera" : "Open front camera"}</span><small>You can switch to the back camera after opening</small></button><label className="photo-upload" htmlFor="visitor-photo">Upload a photo<input key={photoInputKey} id="visitor-photo" type="file" accept="image/*" onChange={event => event.target.files?.[0] && resizePhoto(event.target.files[0])} /></label></div>}{photo && <img className="visitor-preview" src={photo} alt="Your registration preview" />}</>}
     </div>
     <div className="flow-actions">{step > 0 && <button type="button" className="btn secondary" onClick={() => { setError(""); setStep(current => current - 1); }}>Back</button>}{step < steps.length - 1 ? <button type="button" className="btn primary flow-next" onClick={next}>Continue <span>→</span></button> : <button type="button" className="btn primary flow-next" onClick={submit} disabled={loading || !photo}>{loading ? "Registering…" : "Complete registration"} <span>→</span></button>}</div>
   </section>;

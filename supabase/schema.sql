@@ -28,6 +28,12 @@ create index if not exists visitors_check_in_idx on visitors(check_in);
 create index if not exists visitors_status_idx on visitors(status);
 create index if not exists employees_active_idx on employees(active);
 
+-- Feedback captured when a visitor checks out. Safe to run on existing databases.
+alter table visitors add column if not exists feedback_rating smallint;
+alter table visitors add column if not exists feedback_review text;
+alter table visitors drop constraint if exists visitors_feedback_rating_check;
+alter table visitors add constraint visitors_feedback_rating_check check (feedback_rating is null or feedback_rating between 1 and 5);
+
 create table if not exists email_settings (
   id integer primary key default 1 check (id = 1),
   provider text not null default 'gmail',
