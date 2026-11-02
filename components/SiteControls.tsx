@@ -1,25 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { formatISTDate, formatISTTime12, formatISTTime24 } from "@/lib/datetime";
 
 const ACCENTS = [
-  { id: "rose", color: "#e77c5b" },
-  { id: "blue", color: "#3b82f6" },
-  { id: "purple", color: "#8b5cf6" },
-  { id: "emerald", color: "#10b981" },
-  { id: "amber", color: "#f5a623" },
+  { id: "gold", color: "#b8955a" },
+  { id: "forest", color: "#173d32" },
+  { id: "blue", color: "#075cab" },
+  { id: "burgundy", color: "#8a1732" },
+  { id: "sage", color: "#547c6c" },
 ];
 
 export default function SiteControls() {
+  const pathname = usePathname();
+  const isPublicPage = !pathname.startsWith("/admin");
   const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [accent, setAccent] = useState("rose");
+  const [accent, setAccent] = useState("gold");
   const [now, setNow] = useState<Date | null>(null);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const savedTheme = (localStorage.getItem("bvm-theme") as "light" | "dark") || "light";
-    const savedAccent = localStorage.getItem("bvm-accent") || "rose";
+    const savedAccent = localStorage.getItem("bvm-accent") || "gold";
     setTheme(savedTheme);
     setAccent(savedAccent);
     document.documentElement.setAttribute("data-theme", savedTheme);
@@ -67,9 +70,16 @@ export default function SiteControls() {
           <a className="site-controls-admin" href="/admin">🔐 Admin panel</a>
         </div>
       )}
-      <button type="button" className="site-controls-toggle" onClick={() => setOpen(v => !v)} aria-expanded={open} aria-label="Toggle display settings">
-        {open ? "✕" : "⚙"}
-      </button>
+      <div className="site-controls-actions">
+        {isPublicPage && (
+          <button type="button" className="site-controls-refresh" onClick={() => window.location.reload()} aria-label="Refresh page" title="Refresh page">
+            ↻
+          </button>
+        )}
+        <button type="button" className="site-controls-toggle" onClick={() => setOpen(v => !v)} aria-expanded={open} aria-label="Toggle display settings">
+          {open ? "✕" : "⚙"}
+        </button>
+      </div>
     </div>
   );
 }
